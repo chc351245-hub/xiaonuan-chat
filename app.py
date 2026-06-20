@@ -5,6 +5,11 @@ import time
 import threading
 from datetime import datetime, date, timedelta, timezone
 from openai import OpenAI
+from personality_test import (
+    render_personality_test,
+    load_personality_profile,
+    build_personality_prompt,
+)
 
 # ==================== 🔑 API 配置 ====================
 API_KEY = st.secrets["DEEPSEEK_API_KEY"]
@@ -19,6 +24,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WHITELIST_FILE = os.path.join(BASE_DIR, "whitelist.json")
 USAGE_FILE = os.path.join(BASE_DIR, "daily_usage.json")
 PUSH_STATE_FILE = os.path.join(BASE_DIR, "push_state.json")
+PERSONALITY_PROFILE_FILE = os.path.join(BASE_DIR, "personality_profile.json")
 
 # 定时推送时间点 (小时, 分钟)
 LUNCH_TRIGGER = (12, 30)
@@ -439,7 +445,7 @@ if "messages" not in st.session_state:
         st.session_state.messages = [
             {"role": "assistant", "content": "嗨～我是小暖，很高兴遇见你 💕 今天过得怎么样呀？无论开心还是烦恼，我都愿意听你说～"}
         ]
-        save_chat_history(st.session_state.messages)
+        # 注意：加载失败时不自动写入，避免覆盖可能存在的旧文件
 
 # ==================== 用户身份（侧边栏） ====================
 with st.sidebar:
@@ -497,11 +503,30 @@ with st.sidebar:
     st.divider()
     st.caption("💡 提示：加微信 XiaoNuan_AI 请小暖喝奶茶，解锁无限畅聊～")
 
+    st.divider()
+
+    # 性格测试入口
+    if "show_test" not in st.session_state:
+        st.session_state.show_test = False
+
+    if st.button("🧠 恋爱性格测试", use_container_width=True,
+                 help="20道题 · 4个维度 · 发现你的恋爱人格"):
+        st.session_state.show_test = True
+        st.rerun()
+
 # ==================== 启动后台定时器 ====================
 start_background_scheduler()
 
 # ==================== 检查定时推送 ====================
 check_and_apply_scheduled_push()
+
+# ==================== 性格测试页 ====================
+if st.session_state.get("show_test", False):
+    render_personality_test(PERSONALITY_PROFILE_FILE)
+
+    # 仅在非测试状态下渲染后续聊天内容
+    if st.session_state.get("show_test", False):
+        st.stop()
 
 # ==================== 系统提示词 ====================
 SYSTEM_PROMPT = """你是一个温暖、高情商的倾听者，像一个亲密的异性朋友。
@@ -598,7 +623,8 @@ if prompt := st.chat_input("说点什么吧……"):
 
     # 5. 构建 API 消息列表（只保留最近 N 条，避免超出 token 上限）
     time_info = get_beijing_time_info()
-    system_with_time = SYSTEM_PROMPT + f"\n\n【系统隐藏信息】当前北京时间是：{time_info}。"
+    personality_ctx = build_personality_prompt(load_personality_profile(PERSONALITY_PROFILE_FILE))
+    system_with_time = SYSTEM_PROMPT + f"\n\n【系统隐藏信息】当前北京时间是：{time_info}。" + personality_ctx
     api_messages = [{"role": "system", "content": system_with_time}]
     recent_messages = st.session_state.messages[-MAX_CONTEXT_MESSAGES:]
     for msg in recent_messages:
