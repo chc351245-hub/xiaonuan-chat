@@ -16,7 +16,7 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 
 # ==================== ⚙️ 用量 & 推送配置 ====================
-DAILY_LIMIT = 20  # 单用户每日免费对话次数
+DAILY_LIMIT = 15  # 单用户每日免费对话次数
 MAX_CONTEXT_MESSAGES = 30  # 最多保留最近 N 条消息发给 API，避免超出 token 上限
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1175,6 +1175,19 @@ header {visibility: hidden;}
     background: transparent !important;
 }
 
+/* ===== 顶部固定栏 ===== */
+.sticky-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: rgba(254, 240, 240, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #f0d8e0;
+    padding: 8px 0;
+    margin-bottom: 12px;
+}
+
 /* ===== 顶部标题栏 ===== */
 .title-bar {
     background: transparent;
@@ -1183,19 +1196,11 @@ header {visibility: hidden;}
     font-size: 18px;
     font-weight: 600;
     color: #191919;
-    border-bottom: 1px solid #d9d9d9;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    margin-bottom: 8px;
-}
-
-.title-bar .status {
-    font-size: 12px;
-    font-weight: 400;
-    color: #999;
-    display: block;
-    margin-top: 2px;
+    border-bottom: none;
+    position: static;
+    top: auto;
+    z-index: auto;
+    margin-bottom: 0;
 }
 
 /* ===== 聊天消息容器 ===== */
@@ -1434,7 +1439,8 @@ def stream_bot_reply(api_messages: list):
         yield f"😢 小暖信号不太好……稍等一下再试试好吗？（{str(e)[:80]}）"
 
 
-# ==================== 顶部标题栏（始终固定） ====================
+# ==================== 顶部固定栏（始终不随聊天滚动） ====================
+st.markdown('<div class="sticky-top-bar">', unsafe_allow_html=True)
 col_left, col_center, col_right = st.columns([1, 3, 1])
 with col_left:
     # 性格测试按钮 — 始终在左上角
@@ -1448,8 +1454,7 @@ with col_left:
 
 with col_center:
     st.markdown(
-        '<div class="title-bar">💕 暖心伴侣 · 小暖'
-        '<span class="status">DeepSeek-V3 大脑 · 流式输出已开启 · 每日 {limit} 次免费对话</span></div>'.format(limit=DAILY_LIMIT),
+        '<div class="title-bar">💕 暖心伴侣 · 小暖</div>',
         unsafe_allow_html=True,
     )
 
@@ -1462,6 +1467,7 @@ with col_right:
         ]
         save_chat_history(st.session_state.messages)
         st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ==================== 渲染历史聊天记录 ====================
 for msg in st.session_state.messages:
