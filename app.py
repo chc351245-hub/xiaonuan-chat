@@ -5,9 +5,13 @@ import time
 import threading
 from datetime import datetime, date, timedelta, timezone
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+load_dotenv()
 
 # ==================== 🔑 API 配置 ====================
-API_KEY = st.secrets["DEEPSEEK_API_KEY"]
+API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 
@@ -917,8 +921,8 @@ st.set_page_config(
 )
 
 # -------------------- 初始化 OpenAI 客户端 --------------------
-if "DEEPSEEK_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["DEEPSEEK_API_KEY"], base_url=DEEPSEEK_BASE_URL)
+if API_KEY:
+    client = OpenAI(api_key=API_KEY, base_url=DEEPSEEK_BASE_URL)
 else:
     client = None
 
@@ -1355,28 +1359,7 @@ with st.sidebar:
             st.caption("🔒 今日免费次数已用完")
 
     st.divider()
-
-    # 清除聊天记录按钮
-    if st.button("🗑️ 清除聊天记录", use_container_width=True, help="清空所有对话，重新开始"):
-        st.session_state.messages = [
-            {"role": "assistant", "content": "嗨～我是小暖，很高兴遇见你 💕 今天过得怎么样呀？无论开心还是烦恼，我都愿意听你说～"}
-        ]
-        save_chat_history(st.session_state.messages)
-        st.rerun()
-
-    st.divider()
     st.caption("💡 提示：加微信 XiaoNuan_AI 请小暖喝奶茶，解锁无限畅聊～")
-
-    st.divider()
-
-    # 性格测试入口
-    if "show_test" not in st.session_state:
-        st.session_state.show_test = False
-
-    if st.button("🧠 恋爱性格测试", use_container_width=True,
-                 help="20道题 · 4个维度 · 发现你的恋爱人格"):
-        st.session_state.show_test = True
-        st.rerun()
 
 # ==================== 启动后台定时器 ====================
 start_background_scheduler()
@@ -1451,12 +1434,34 @@ def stream_bot_reply(api_messages: list):
         yield f"😢 小暖信号不太好……稍等一下再试试好吗？（{str(e)[:80]}）"
 
 
-# ==================== 顶部标题栏 ====================
-st.markdown(
-    '<div class="title-bar">💕 暖心伴侣 · 小暖'
-    '<span class="status">DeepSeek-V3 大脑 · 流式输出已开启 · 每日 {limit} 次免费对话</span></div>'.format(limit=DAILY_LIMIT),
-    unsafe_allow_html=True,
-)
+# ==================== 顶部标题栏（始终固定） ====================
+col_left, col_center, col_right = st.columns([1, 3, 1])
+with col_left:
+    # 性格测试按钮 — 始终在左上角
+    if "show_test" not in st.session_state:
+        st.session_state.show_test = False
+
+    if st.button("🧠 恋爱性格测试", use_container_width=True,
+                 help="20道题 · 4个维度 · 发现你的恋爱人格"):
+        st.session_state.show_test = True
+        st.rerun()
+
+with col_center:
+    st.markdown(
+        '<div class="title-bar">💕 暖心伴侣 · 小暖'
+        '<span class="status">DeepSeek-V3 大脑 · 流式输出已开启 · 每日 {limit} 次免费对话</span></div>'.format(limit=DAILY_LIMIT),
+        unsafe_allow_html=True,
+    )
+
+with col_right:
+    # 清除聊天 — 始终在右上角
+    if st.button("🗑️ 清除聊天", use_container_width=True,
+                 help="一键清除所有聊天记录，重新开始"):
+        st.session_state.messages = [
+            {"role": "assistant", "content": "嗨～我是小暖，很高兴遇见你 💕 今天过得怎么样呀？无论开心还是烦恼，我都愿意听你说～"}
+        ]
+        save_chat_history(st.session_state.messages)
+        st.rerun()
 
 # ==================== 渲染历史聊天记录 ====================
 for msg in st.session_state.messages:
